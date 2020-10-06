@@ -3,7 +3,7 @@
 
 ## /web
 웹페이지 폴더, 데이터베이스에 접근해서 간편하게 차트로 웹에서 표현  
-서비스 url : https://jeto.ga/softapp  
+**서비스 url : https://jeto.ga/softapp**  
 
 ## /api
 웹에서 데이터베이스에 접근하기 위해 구축한 서버 api 파일/폴더
