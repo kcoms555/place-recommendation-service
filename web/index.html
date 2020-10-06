@@ -3,60 +3,267 @@
 <head>
 <title>Chart</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-<div>
-<canvas id="line-chart" width="800" height="450"></canvas>
+<div id="app">
+	<div>
+		<div><h2>자전거 현황표</h2></div>
+		<div><h4>{{status_message}}</h4></div>
+		<div><h4>{{status_process1}}</h4></div>
+		<div><h4>{{status_process2}}</h4></div>
+		<div v-on:click="select(top(10), 240)">select</div>
+		<div v-on:click="select(bottom(10), 240)">select</div>
+		<div v-on:click="update()">update</div>
+		<div v-on:click="sort_bike_station_list()">sort</div>
+	</div>
+	<canvas id="line-chart" width="800" height="450"></canvas>
 </div>
 </body>
 <script>
 
-const _fetch = async (path) => {
-	console.log(`send to https://jeto.ga/api/softapp${path}`);
-	const res = await fetch('https://jeto.ga/api/softapp${path}');
-	const jres = await res.json();
-	return jres;
+let v = new Vue({
+	el: '#app',
+	data: {
+		status_message: '',
+		status_process1: '',
+		status_process2: '',
+		bike_station_dict: {},
+		bike_station_list: [],
+		bike_first_log_timestamp_in_db: null,
+		bike_first_log_timestamp: null,
+		bike_last_log_timestamp: null,
+		items: ["ST-1768", "ST-269", "ST-849"],
+		colorlist: ["#3e95cd", "#8e5ea2", "#3cba9f", "#e8c3b9", "#c45850"],
+	},
+	async created(){
+		for(i=0; i<3000; i++) this.colorlist.push('#'+rpad(parseInt(Math.random() * 16777216).toString(16), 6, '0'));
+		await this.check_and_update_bike_stations();
+		await this.update_bike_logs(-24*60*10, -1);
+		//setInterval(this.update(-24*60*60, -1), 10 * 1000);
+	},
+	methods: {
+		sort_bike_station_list(is_ascending){
+			this.bike_station_list = [];
+			for(key in this.bike_station_dict){
+				this.bike_station_list.push([
+					key,
+					this.bike_station_dict[key]["stationName"],
+					this.bike_station_dict[key]["logs"].length
+				]);
+			}
+			if(is_ascending) this.bike_station_list.sort(function(a,b){ return a[2] - b[2]; });
+			else this.bike_station_list.sort(function(a,b){ return b[2] - a[2]; });
+		},
+		bottom(count){
+			var items = [];
+			for(i=0; i<count; i++) items.push(this.bike_station_list[i][0]);
+			return items;
+		},
+		top(count){
+			var items = [];
+			const len = this.bike_station_list.length;
+			for(i=len-1; i>=len-count; i--) items.push(this.bike_station_list[i][0]);
+			return items;
+		},
+		async _fetch(path) {
+			console.log(`send to https://jeto.ga/api/softapp${path}`);
+			const res = await fetch(`https://jeto.ga/api/softapp${path}`);
+			const jres = await res.json();
+			return jres;
+		},
+		async check_and_update_bike_stations() {
+			this.status_message = '따릉이 거치대 정보 업데이트 중...';
+			const station_info_str = localStorage.getItem('bike_station_info');
+			if(station_info_str == null) return await this.update_bike_stations();
+			const station_info = JSON.parse(station_info_str);
+			const station_count = (await this._fetch('/get_bike_station_counts'))[0]["count(*)"];
+			if(station_info.length != station_count) return await this.update_bike_stations();
+			this.set_bike_station_dict(station_info);
+		},
+		async update_bike_stations() {
+			this.status_message = '따릉이 거치대 정보 업데이트 중...';
+			const jres = await this._fetch('/get_bike_station_info');
+			localStorage.setItem('bike_station_info', JSON.stringify(jres));
+			this.set_bike_station_dict(jres);
+		},
+		set_bike_station_dict(station_info){
+			for(i = 0; i<station_info.length; i++){
+				_id = station_info[i]["stationId"];
+				if( _id in this.bike_station_dict) continue;
+				this.bike_station_dict[_id] = {};
+				this.bike_station_dict[_id]["stationName"] = station_info[i]["stationName"];
+				this.bike_station_dict[_id]["stationLatitude"] = station_info[i]["stationLatitude"];
+				this.bike_station_dict[_id]["stationLongitude"] = station_info[i]["stationLongitude"];
+				this.bike_station_dict[_id]["logs"] = [];
+			}
+			this.status_message = '';
+		},
+		async get_bike_logs_in_dividing_way(from, to){
+			const step = 10000;
+			var data = [];
+			for(i=from; i<=to; i+=step){
+				this.set_status_process(from, to, i);
+				if( i+step-1<to ) data.push(...(await this._fetch(`/get_bikes/${i}/${i+step-1}`)));
+				else data.push(...(await this._fetch(`/get_bikes/${i}/${to}`)));
+			}
+			this.clear_status_process();
+			return data;
+		},
+		select(id_lists, timegap = 60){
+			if(id_lists.length == 0) return;
+
+			var min = 1234567891011;
+			var max = 0;
+			for(i=0; i<id_lists.length; i++){
+				id = id_lists[i];
+				if( this.bike_station_dict[id]["logs"].length == 0 ) continue;
+				min = Math.min(min, this.bike_station_dict[id]["logs"][0][0]);
+				var last_index = this.bike_station_dict[id]["logs"].length - 1;
+				max = Math.max(max, this.bike_station_dict[id]["logs"][last_index][0]);
+			}
+			max = max + (timegap - (max % timegap));
+			min = min - (min % timegap);
+			const counts = parseInt((max-min)/timegap) + 1;
+
+			var labels = [];
+			for(i=0; i<counts; i++) labels.push(get_date_format_str(new Date((min + i * timegap) * 1000)));
+
+			var datasets = [];
+			var item_count = 0;
+			for(i=0; i<id_lists.length; i++){
+				id = id_lists[i];
+				var tmp = {};
+				tmp["borderColor"] = this.colorlist[item_count++];
+				tmp["fill"] = true;
+				tmp["label"] = this.bike_station_dict[id]["stationName"];
+				tmp["data"] = [];
+
+				const list = this.bike_station_dict[id]["logs"];
+				if( list.length > 0 ){
+					var start = 0;
+					var end = list.length-1;
+					var now = min;
+
+
+					while(list[start++][0] <= min);
+					start--;
+					while(list[end--][0] >= max);
+					end++;
+
+					var parkingval = 0;
+					var index = start;
+					var is_null = true;
+					while( index <= end || now <= max){
+						if( (index <= end) && (now <= list[index][0]) && (list[index][0] < now+timegap)){
+							parkingval += list[index][2];
+							index++;
+							is_null = false;
+						} else{
+							if( is_null ) tmp["data"].push(null);
+							else tmp["data"].push(parkingval);
+							now += timegap;
+							is_null = true;
+						}
+					}
+				}
+				datasets.push(tmp);
+			}
+			chart.data.labels = labels;
+			chart.data.datasets = datasets;
+			chart.update();
+		},
+		async update(from, to){
+			await this.update_bike_logs(from, to);
+			chart.update();
+		},
+		async update_bike_logs(from, to){
+			this.status_message = '따릉이 대여 정보 업데이트 중...';
+
+			//localStorage의 최대 용량은 5MB이므로 모든 데이터는 데이터베이스에서 조금씩 꺼내는 방식으로 해결...
+			//일일 데이터의 건수와 용량 : 약 200,000개, 1개의 데이터는 약 100bytes, 총 20MB
+			//가능하면 로컬에 저장하도록 나중에 수정해야할 듯
+
+			if( !(Number.isInteger(this.bike_first_log_timestamp) && Number.isInteger(this.bike_last_log_timestamp)) ){
+				from = this.bike_first_log_timestamp = (await this._fetch(`/get_bike/${from}`))[0]["timestamp"];
+				to = this.bike_last_log_timestamp = (await this._fetch(`/get_bike/-1`))[0]["timestamp"];
+				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(from, to));
+				this.status_message = '';
+				return;
+			}
+
+			from = (await this._fetch(`/get_bike/${from}`))[0]["timestamp"];
+			to = (await this._fetch(`/get_bike/${to}`))[0]["timestamp"]
+
+			if( to > this.bike_last_log_timestamp ){
+				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(this.bike_last_log_timestamp+1, to));
+				this.bike_last_log_timestamp = to;
+			}
+			if( from < this.bike_first_log_timestamp ){
+				await this.append_front_bikes(await this.get_bike_logs_in_dividing_way(from, this.bike_first_log_timestamp-1));
+				this.bike_first_log_timestamp = from;
+			}
+			this.status_message = '';
+		},
+		async append_front_bikes(data){
+			var tmp_station_dict = {}
+			for(i=0; i<data.length; i++){
+				_id = data[i]["stationId"];
+				if( !(_id in tmp_station_dict) ) tmp_station_dict[_id] = [];
+				if( !(_id in this.bike_station_dict) ) await this.update_bike_stations();
+				tmp_station_dict[_id].push([data[i]["timestamp"], data[i]["rackTotCntChange"], data[i]["parkingBikeTotCntChange"], data[i]["sharedChange"]]);
+			}
+			for(key in tmp_station_dict)
+				this.bike_station_dict[key]["logs"].unshift(...tmp_station_dict[key]);
+		},
+		async append_back_bikes(data){
+			for(i=0; i<data.length; i++){
+				_id = data[i]["stationId"];
+				if( !(_id in this.bike_station_dict) ) await this.update_bike_stations();
+				this.bike_station_dict[_id]["logs"].push([data[i]["timestamp"], data[i]["rackTotCntChange"], data[i]["parkingBikeTotCntChange"], data[i]["sharedChange"]]);
+			}
+		},
+		set_status_process(from, to, now){
+			this.status_process1 = `${get_date_format_str(new Date(from*1000))} ~ ${get_date_format_str(new Date(to*1000))}`;
+			this.status_process2 = `${get_date_format_str(new Date(now*1000))} ${Math.round(((now-from)/(1+to-from))*100)}%`;
+		},
+		clear_status_process(){
+			this.status_process1 = '';
+			this.status_process2 = '';
+		}
+	}
+});
+
+function get_date_format_str(d){
+	return d.getFullYear().toString()+"-"+((d.getMonth()+1).toString().length==2?(d.getMonth()+1).toString():"0"+(d.getMonth()+1).toString())+"-"+(d.getDate().toString().length==2?d.getDate().toString():"0"+d.getDate().toString())+" "+(d.getHours().toString().length==2?d.getHours().toString():"0"+d.getHours().toString())+":"+((parseInt(d.getMinutes()/5)*5).toString().length==2?(parseInt(d.getMinutes()/5)*5).toString():"0"+(parseInt(d.getMinutes()/5)*5).toString())+":00";
+}
+function rpad(str, padLen, padStr) {
+	if (padStr.length > padLen) {
+		console.log("오류 : 채우고자 하는 문자열이 요청 길이보다 큽니다");
+		return str + "";
+	}
+	str += ""; // 문자로
+	padStr += ""; // 문자로
+	while (str.length < padLen)
+		str += padStr;
+	str = str.length >= padLen ? str.substring(0, padLen) : str;
+	return str;
 }
 
 const draw = async () => {
 	jres = await _fetch(`/${-24*60*60}/-1`);
 }
-new Chart(document.getElementById("line-chart"), {
+var chart = new Chart(document.getElementById("line-chart"), {
   type: 'line',
   data: {
-    labels: [1500,1600,1700,1750,1850,1900,1950,1999,2050],
-    datasets: [{ 
-        data: [86,114,106,106,111,133,221,783,2478],
-        label: "Africa",
-        borderColor: "#3e95cd",
-        fill: true
-      }, { 
-        data: [282,null,411,null,947,1402,3700,5267],
-        label: "Asia",
-        borderColor: "#8e5ea2",
-        fill: false
-      }, { 
-        data: [168,170,178,190,276,408,547,675,734],
-        label: "Europe",
-        borderColor: "#3cba9f",
-        fill: false
-      }, { 
-        data: [40,20,10,16,24,74,167,508,784],
-        label: "Latin America",
-        borderColor: "#e8c3b9",
-        fill: false
-      }, { 
-        data: [6,3,2,2,7,26,172,312,433],
-        label: "North America",
-        borderColor: "#c45850",
-        fill: false
-      }
-    ]
+    labels: [],
+    datasets: []
   },
   options: {
     title: {
       display: true,
-      text: 'World population per region (in millions)'
+      text: '실시간 따릉이 이용 데이터'
     },
 	spanGaps: true
   }

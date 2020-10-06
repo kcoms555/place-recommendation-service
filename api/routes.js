@@ -44,7 +44,27 @@ const SEND = async (req, res, status, body, issuccess)=>{
 	}
 };
 
-app.get('/get_bike/:from/:to', wrapper( async (req, res, next) =>{
+app.get('/get_bike_station_counts', wrapper( async (req, res, next) =>{
+	var [row, fields] = await db.execute("SELECT count(*) from bike_station_info");
+	return SEND(req, res, 200, row ,true);
+}));
+
+app.get('/get_bike_station_info', wrapper( async (req, res, next) =>{
+	var [row, fields] = await db.execute("SELECT * from bike_station_info");
+	return SEND(req, res, 200, row ,true);
+}));
+
+app.get('/get_bike/:single', wrapper( async (req, res, next) =>{
+	var single = parseInt(req.params.single);
+	if(single<0)
+		single = Math.round(Date.now()/1000) + single + 1;
+	var [row, fields] = await db.execute("SELECT * from bike_log WHERE timestamp>=? limit 1", [single]);
+	if(row.length == 0)
+		var [row, fields] = await db.execute("SELECT * from bike_log WHERE timestamp<? order by timestamp desc limit 1", [single]);
+	return SEND(req, res, 200, row ,true);
+}));
+
+app.get('/get_bikes/:from/:to', wrapper( async (req, res, next) =>{
 	var from = parseInt(req.params.from);
 	var to = parseInt(req.params.to);
 	if(from<0)
