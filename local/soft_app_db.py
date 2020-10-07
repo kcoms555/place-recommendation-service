@@ -29,8 +29,12 @@ class soft_app_db:
 		self.db.execute("insert into bike_station_info values(%s, %s, %s, %s)", 
 			(stationId, stationName, stationLatitude, stationLongitude))
 
-	def insert_new_bike_log(self, timestamp, stationId, rackTotCntChange, parkingBikeTotCnt, shared):
+	def insert_new_bike_log(self, timestamp, stationId, rackTotCnt, parkingBikeTotCnt, shared):
 		self.db.execute("insert into bike_log values(%s, %s, %s, %s, %s)", 
-			(timestamp, stationId, rackTotCntChange, parkingBikeTotCnt, shared))
+			(timestamp, stationId, rackTotCnt, parkingBikeTotCnt, shared))
+
+	def insert_new_bike_change_log(self, timestamp, stationId, rackTotCntChange, parkingBikeTotCntChange, sharedChange):
+		self.db.execute("insert into bike_change_log values(%s, %s, %s, %s, %s)", 
+			(timestamp, stationId, rackTotCntChange, parkingBikeTotCntChange, sharedChange))
 	def commit(self):
 		self.conn.commit()

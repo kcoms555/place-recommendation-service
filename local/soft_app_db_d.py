@@ -14,7 +14,7 @@ def fetch_bike_items_from_web():
 
 stationdict = {}
 
-db = soft_app_db
+db = soft_app_db.soft_app_db()
 station_in_db = db.get_stations_from_db()
 is_there_new_station = False
 
@@ -33,6 +33,8 @@ while True:
 			if _id not in stationdict:
 				stationdict[_id] = []
 				stationdict[_id].extend(nowitem_stat)
+				db.insert_new_bike_log(timestamp, _id, *nowitem_stat)
+				count += 1
 
 				# db에도 등록된 station이 아닐 경우 db에 추가
 				if _id not in station_in_db:
@@ -40,6 +42,7 @@ while True:
 					db.insert_new_station(_id, nowitem['stationName'], nowitem['stationLatitude'], nowitem['stationLongitude'])
 					is_there_new_station = True
 					count += 1
+
 				continue
 
 			# 이전과 비교 변화량 측정
@@ -51,7 +54,8 @@ while True:
 			# 변화 있을시 데이터베이스 반영
 			for i in range(3): stationdict[_id][i] = nowitem_stat[i]
 			print(f'logging {_id}({nowitem["stationName"]}) {change} {(nowitem_stat[1]/nowitem_stat[0])*100}%')
-			db.insert_new_bike_log(timestamp, _id, *change)
+			print(nowitem_stat)
+			db.insert_new_bike_log(timestamp, _id, *nowitem_stat)
 			count += 1
 
 		if count > 0:

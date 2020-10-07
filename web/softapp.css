@@ -1,0 +1,62 @@
+#app_controller {
+	text-align: center;
+	margin: 1em auto;
+	display: table;
+}
+#status{
+	z-index: -1;
+	text-align: left;
+	left: 3px;
+}
+#selector{
+	z-index: 1;
+	text-align: right;
+	right: -3px;
+}
+#status, #selector {
+	position: fixed;
+	top: 5px;
+	width: max-content;
+	height: auto;
+}
+#selector h4, #selector h3, #selector h2{
+	margin: 0.5em;
+	padding: 0.2em 0.5em;
+}
+#status h4, #status h3, #status h2{
+	margin: 0.2em;
+}
+.hide{
+	display: none;
+}
+#map{
+	width: 100%;
+	height: 90%;
+}
+#connect_button{
+	margin: 0.5em 20%;
+	padding: 1em;
+	background-color: #70bafa;
+	cursor: pointer;
+}
+#connect_button:hover{
+	background: #f77d89;
+}
+.button{
+	margin: 0.5em 20%;
+	padding: 1em;
+	background-color: #e4f2ff;
+	cursor: pointer;
+}
+.button:hover{
+	background: #ffc5cb;
+}
+#buttons-tbody tr td{
+	padding: 2em;
+	background-color: #7ebdb4;
+}
+#canvas{
+	height: 40em;
+}
+.none{
+}
