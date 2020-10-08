@@ -1,3 +1,22 @@
+a, a:link, a:visited{
+	text-decoration: none;
+	color: black;
+}
+#map div[style*="background: rgb(255, 255, 255)"] {
+	background: rgba(201, 191, 255, 0.6) !important;
+	border: 0px !important;
+	text-align: center !important;
+	border-radius: 10em !important;
+}
+#map div[style*="background: rgb(255, 255, 255)"] div[style*="background: url"]{
+	background: rgba(0,0,0,0.0) !important;
+}
+#map div[style*="background: rgb(255, 255, 255)"] div[style*="position: absolute; left: 0px; top: 0px;"]{
+	/*
+	transform: translate(15%, 40%);
+	*/
+}
+
 #app_controller {
 	text-align: center;
 	margin: 1em auto;
