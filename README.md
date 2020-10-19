@@ -1,7 +1,8 @@
-# software_application
-2020 3-2 소프트웨어응용 텀프로젝트
+# place-recommendation-service
+place recommendation service using real-time public transportation data  
+실시간 공공 교통 데이터를 이용한 장소 추천 서비스  
 
-# 프로젝트 개요
+# 개요
 연간 서울시 공공 자전거 사용자가 4000만명 대로 추산이 됩니다. 이러한 공공 자전거들의 대여소별 대여/반납 이력들을 초 단위로 잘 관찰하면 시간대별 붐비는 장소를 추정할 수 있습니다. 우리의 목표는 더 나아가 현재 서울시에서 예전과 대조를 하였을 때, 가장 인기있는/인기없는 장소 추정해내는 것입니다.
 
 # 어떻게 구현할 것인가?
