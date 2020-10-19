@@ -6,6 +6,9 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# swp file
+*.swp
+
 # output file
 *.out
 
@@ -44,6 +47,7 @@ build/Release
 node_modules/
 jspm_packages/
 api/node_modules/
+api/node_modules
 api/package-lock.json
 
 # TypeScript v1 declaration files
@@ -108,3 +112,5 @@ dist
 # TernJS port file
 .tern-port
 
+# Python cache_forder
+local/__pycache__/

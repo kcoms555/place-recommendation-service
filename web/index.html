@@ -91,7 +91,7 @@ let v = new Vue({
 		for(i=0; i<3000; i++) this.colorlist.push('#'+rpad(parseInt(Math.random() * 16777216).toString(16), 6, '0'));
 		await this.check_and_update_bike_stations();
 		await this.update(-24*60*60, -1);
-		setInterval( () =>{ this.update(-24*60*60).then(res=>{}).catch(err=>{console.log(err);});} , 60* 1000);
+		//setInterval( () =>{ this.update(-24*60*60).then(res=>{}).catch(err=>{console.log(err);});} , 60* 1000);
 	},
 	methods: {
 		assign_map(){
@@ -178,13 +178,13 @@ let v = new Vue({
 			const station_info_str = localStorage.getItem('bike_station_info');
 			if(station_info_str == null) return await this.update_bike_stations();
 			const station_info = JSON.parse(station_info_str);
-			const station_count = (await this._fetch('/get_bike_station_counts'))[0]["count(*)"];
+			const station_count = (await this._fetch('/bike_station_counts'))[0]["count(*)"];
 			if(station_info.length != station_count) return await this.update_bike_stations();
 			this.set_bike_station_dict(station_info);
 		},
 		async update_bike_stations() {
 			this.status_message = '따릉이 거치대 정보 업데이트 중...';
-			const jres = await this._fetch('/get_bike_station_info');
+			const jres = await this._fetch('/bike_station_info');
 			localStorage.setItem('bike_station_info', JSON.stringify(jres));
 			this.set_bike_station_dict(jres);
 		},
@@ -206,8 +206,8 @@ let v = new Vue({
 			var data = [];
 			for(i=from; i<=to; i+=step){
 				this.set_status_process(from, to, i);
-				if( i+step-1<to ) data.push(...(await this._fetch(`/get_bikes/${i}/${i+step-1}`)));
-				else data.push(...(await this._fetch(`/get_bikes/${i}/${to}`)));
+				if( i+step-1<to ) data.push(...(await this._fetch(`/bikes/${i}/${i+step-1}`)));
+				else data.push(...(await this._fetch(`/bikes/${i}/${to}`)));
 			}
 			this.clear_status_process();
 			return data;
@@ -294,15 +294,15 @@ let v = new Vue({
 			//가능하면 로컬에 저장하도록 나중에 수정해야할 듯
 
 			if( !(Number.isInteger(this.bike_first_log_timestamp) && Number.isInteger(this.bike_last_log_timestamp)) ){
-				from = this.bike_first_log_timestamp = (await this._fetch(`/get_bike/${from}`))[0]["timestamp"];
-				to = this.bike_last_log_timestamp = (await this._fetch(`/get_bike/-1`))[0]["timestamp"];
+				from = this.bike_first_log_timestamp = (await this._fetch(`/bike/${from}`))[0]["timestamp"];
+				to = this.bike_last_log_timestamp = (await this._fetch(`/bike/-1`))[0]["timestamp"];
 				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(from, to));
 				this.status_message = '';
 				return;
 			}
 
-			from = (await this._fetch(`/get_bike/${from}`))[0]["timestamp"];
-			to = (await this._fetch(`/get_bike/${to}`))[0]["timestamp"]
+			from = (await this._fetch(`/bike/${from}`))[0]["timestamp"];
+			to = (await this._fetch(`/bike/${to}`))[0]["timestamp"]
 
 			if( to > this.bike_last_log_timestamp ){
 				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(this.bike_last_log_timestamp+1, to));

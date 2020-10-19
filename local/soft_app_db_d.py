@@ -24,25 +24,26 @@ while True:
 
 		now = fetch_bike_items_from_web()
 		timestamp = round(time.time())
+		print(f'{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))} [전체 거치대 수, 현재 거치된 자전거 수, shared], [이전 대비 변화량]')
 
 		for nowitem in now:
 			_id = nowitem['stationId']
 			nowitem_stat = [int(nowitem['rackTotCnt']), int(nowitem['parkingBikeTotCnt']), int(nowitem['shared'])]
 
-			# 프로그램 최초 실행시 경우 메모리에 반영 및 다음 아이템으로
+			# db에도 등록된 station이 아닐 경우 db에 추가 후 다음 아이템으로
+			if _id not in station_in_db:
+				print(f'New station {_id}({nowitem["stationName"]}) added')
+				db.insert_new_station(_id, nowitem['stationName'], nowitem['stationLatitude'], nowitem['stationLongitude'])
+				is_there_new_station = True
+				count += 1
+				continue
+
+			# 프로그램 최초 실행시 경우 메모리에 반영 및 db에 추가 후 다음 아이템으로
 			if _id not in stationdict:
 				stationdict[_id] = []
 				stationdict[_id].extend(nowitem_stat)
 				db.insert_new_bike_log(timestamp, _id, *nowitem_stat)
 				count += 1
-
-				# db에도 등록된 station이 아닐 경우 db에 추가
-				if _id not in station_in_db:
-					print(f'New station {_id}({nowitem["stationName"]}) added')
-					db.insert_new_station(_id, nowitem['stationName'], nowitem['stationLatitude'], nowitem['stationLongitude'])
-					is_there_new_station = True
-					count += 1
-
 				continue
 
 			# 이전과 비교 변화량 측정
@@ -53,8 +54,7 @@ while True:
 
 			# 변화 있을시 데이터베이스 반영
 			for i in range(3): stationdict[_id][i] = nowitem_stat[i]
-			print(f'logging {_id}({nowitem["stationName"]}) {change} {(nowitem_stat[1]/nowitem_stat[0])*100}%')
-			print(nowitem_stat)
+			print(f'{_id}({nowitem["stationName"]}) {nowitem_stat} {change}')
 			db.insert_new_bike_log(timestamp, _id, *nowitem_stat)
 			count += 1
 
