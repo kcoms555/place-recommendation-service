@@ -58,9 +58,12 @@ app.get('/bike/:single', wrapper( async (req, res, next) =>{
 	var single = parseInt(req.params.single);
 	if(single<0)
 		single = Math.round(Date.now()/1000) + single + 1;
+	console.log(`SELECT * from bike_log WHERE timestamp>=${single} limit 1`);
 	var [row, fields] = await db.execute("SELECT * from bike_log WHERE timestamp>=? limit 1", [single]);
-	if(row.length == 0)
+	if(row.length == 0){
+		console.log(`SELECT * from bike_log WHERE timestamp<${single} limit 1`);
 		var [row, fields] = await db.execute("SELECT * from bike_log WHERE timestamp<? order by timestamp desc limit 1", [single]);
+	}
 	return SEND(req, res, 200, row ,true);
 }));
 
@@ -71,6 +74,8 @@ app.get('/bikes/:from/:to', wrapper( async (req, res, next) =>{
 		from = Math.round(Date.now()/1000) + from + 1;
 	if(to<0)
 		to = Math.round(Date.now()/1000) + to + 1;
+
+	if( (to - from) > 86400 * 2) throw('Gap between timestamps is too big. Gap should be lower then 48 hours');
 
 	var [row, fields] = await db.execute("SELECT * from bike_log WHERE timestamp>? and timestamp<?", [from-1, to+1]);
 	return SEND(req, res, 200, row ,true);
