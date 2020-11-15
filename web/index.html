@@ -2,402 +2,72 @@
 <html>
 <head>
 <title>Chart</title>
-<link rel="stylesheet" href="./softapp.css" />
+<link rel="stylesheet" href="css/softapp.css" />
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1a5b0d82d301bd3883918afa567ac25f&libraries=drawing"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
 <script src="https://unpkg.com/lodash@4.13.1/lodash.min.js"></script>
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1a5b0d82d301bd3883918afa567ac25f&libraries=drawing"></script>
+<script src='https://unpkg.com/v-calendar'></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 <div id="app">
 	<div id="app_controller">
 		<div id="status">
-			<div><h4>현재 로딩된 데이터 범위 : {{bike_first_log_timestamp_str}} ~ {{bike_last_log_timestamp_str}}</h4></div>
 			<div><h3>{{status_message}}</h4></div>
-			<div><h4>{{status_process1}}</h4></div>
-			<div><h4>{{status_process2}}</h4></div>
+			<h6>
+			<div>now : 선택된 시간 범위</div>
+			<div>before : 선택된 시간 범위 1일 or 1주일 이전</div>
+			<div>delta : now 시간대와 before 시간대의 차이</div>
+			<div>rel : relation 값 (-1 ~ 1)</div>
+			<div>retren : 반환 횟수 - 대여 횟수</div>
+			<div>returns : 반환 횟수</div>
+			<div>rentals : 대여 횟수</div>
+			<div>ex) returns_delta : 선택 시간 범위 반환 횟수 - 선택 시간 범위 1일 or 1주일 이전 시간대 반환 횟수</div>
+			</h6>
 		</div>
 		<div id="selector">
 			<div><h4 v-on:click="render_chart = !render_chart" class="button">차트</h4></div>
 			<div><h4 v-on:click="render_map_func(); update();" class="button">지도</h4></div>
 		</div>
 		<div>
+		</div>
+		<div>
 			<div><h2>자전거 현황</h2></div>
-			<div><h4>시간 간격 (초)<input v-model="timegap" type="number" min="5" max="86400"></h4></div>
-			<div><h4>조회 범위(반납+대여 발생 내림차순) 0 ~ {{bike_station_count-1}}</h4></div>
-			<div><h4><input v-model="select_index_left" type="number" min="0" max="86400"> ~ <input v-model="select_index_right" type="number" min="0"></h4></div>
+			<div><h4>표본 비율(대여, 반납 발생 빈도 순)<input v-model="top_transaction_percentage" type="number" min="0" max="100"> %</h4></div>
+			<div>
+				<h4>시간 범위 선택
+				  	<div class="timerangeselector">
+						<label><input type="radio" value=86400 v-model="timedelay">1일 전</label>
+						<label><input type="radio" value=604800 v-model="timedelay">1주일 전</label>
+					</div>
+
+					<v-date-picker v-model="range" is-range :select-attribute="selectDragAttribute" :drag-attribute="selectDragAttribute" mode="dateTime" @drag="dragValue = $event" is24hr >
+						<template v-slot="{ inputValue, inputEvents }">
+							<div class="timebox">
+								<input :value="inputValue.start" v-on="inputEvents.start" class="border px-2 py-1 w-32 rounded focus:outline-none focus:border-indigo-300" />
+								<svg height="1em" fill="none" viewBox="0 0 24 24" stroke="currentColor" >
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+								</svg>
+								<input :value="inputValue.end" v-on="inputEvents.end" class="border px-2 py-1 w-32 rounded focus:outline-none focus:border-indigo-300" />
+							</div>
+						</template>
+					</v-date-picker>
+				</h4>
+			</div>
+			<div>
+				<h4>정렬키 : <select v-model="sortkey"> <option v-for="option in sortkeys" v-bind:value="option"> {{ option }} </option> </select> </h4>
+			</div>
+			<div><h4>showLine : <input type="checkbox" v-model="showLine"></h4></div>
 		</div>
 	</div>
-	<div id="canvas" v-bind:class="{hide: !render_chart}"> <canvas id="line-chart" width="1800" height="450"></canvas> </div>
+	<div id="canvas" v-bind:class="{hide: !render_chart}" style="width:100%;height:100%"> <canvas id="line-chart"></canvas> </div>
 	<div id="map" v-bind:class="{hide: !render_map}" style="width:100%;height:100%;"></div>
 </div>
+<script src="js/apputils.js"></script>
+<script src="js/BikeStationManager.js"></script>
+<script src="js/MapManager.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chart.js"></script>
 </body>
-<script>
-let v = new Vue({
-	el: '#app',
-	data: {
-		status_message: '',
-		status_process1: '',
-		status_process2: '',
-		select_index_left: 0,
-		select_index_right: 5,
-		bike_station_count: 0,
-		bike_station_dict: {},
-		bike_station_list: [],
-		bike_first_log_timestamp_in_db: null,
-		bike_first_log_timestamp: null,
-		bike_last_log_timestamp: null,
-		bike_first_log_timestamp_str: '',
-		bike_last_log_timestamp_str: '',
-		timegap: 60,
-		colorlist: ["#3e95cd", "#8e5ea2", "#3cba9f", "#e8c3b9", "#c45850"],
-		render_chart: true,
-		render_map: true,
-		map: null,
-		markers: [],
-		infowindows: [],
-	},
-	watch: {
-		timegap: function(e){
-			this.status_message = '시간간격 입력 대기 중'
-			this.timegap = parseInt(this.timegap);
-			if( !Number.isInteger(this.timegap) ) this.timegap = 5;
-			if( this.timegap < 5 ) this.timegap = 5;
-			if( this.timegap > 86400 ) this.timegap = 86400;
-			this.debouncedUpdate();
-		},
-		select_index_left: function(e){
-			this.status_message = '조회 범위 입력 대기 중'
-			this.select_index_left = parseInt(this.select_index_left);
-			if( !Number.isInteger(this.select_index_left) ) this.select_index_left = 0;
-			if( this.select_index_left < 0 ) this.select_index_left = 0;
-			if( this.select_index_left > this.bike_station_count-1 ) this.select_index_left = this.bike_station_count-1;
-			this.debouncedUpdate();
-		},
-		select_index_right: function(e){
-			this.status_message = '조회 범위 입력 대기 중'
-			this.select_index_right = parseInt(this.select_index_right);
-			if( !Number.isInteger(this.select_index_right) ) this.select_index_right = 0;
-			if( this.select_index_right < 0 ) this.select_index_right = 0;
-			if( this.select_index_right > this.bike_station_count-1 ) this.select_index_right = this.bike_station_count-1;
-			this.debouncedUpdate();
-		},
-		bike_first_log_timestamp: function(e){ this.bike_first_log_timestamp_str = timestamp_to_str(this.bike_first_log_timestamp)},
-		bike_last_log_timestamp: function(e){ this.bike_last_log_timestamp_str = timestamp_to_str(this.bike_last_log_timestamp)},
-	},
-	async created(){
-		this.debouncedUpdate = _.debounce(this.update, 2000);
-		for(i=0; i<3000; i++) this.colorlist.push('#'+rpad(parseInt(Math.random() * 16777216).toString(16), 6, '0'));
-		await this.check_and_update_bike_stations();
-		await this.update(-24*60*60, -1);
-		//setInterval( () =>{ this.update(-24*60*60).then(res=>{}).catch(err=>{console.log(err);});} , 60* 1000);
-	},
-	methods: {
-		assign_map(){
-			if(this.map == null){
-				var container = document.getElementById('map'); //지도를 담을 영역의 DOM 레퍼런스
-				var options = { //지도를 생성할 때 필요한 기본 옵션
-					center: new kakao.maps.LatLng(37.58256149, 127.05436707), //지도의 중심좌표.
-						level: 3 //지도의 레벨(확대, 축소 정도)
-				};
-				this.map = new kakao.maps.Map(container, options); //지도 생성 및 객체 리턴
-				return;
-			}
-		},
-		render_map_func(){
-			if(this.map == null){
-				var container = document.getElementById('map'); //지도를 담을 영역의 DOM 레퍼런스
-				var options = { //지도를 생성할 때 필요한 기본 옵션
-					center: new kakao.maps.LatLng(37.58256149, 127.05436707), //지도의 중심좌표.
-						level: 3 //지도의 레벨(확대, 축소 정도)
-				};
-				this.map = new kakao.maps.Map(container, options); //지도 생성 및 객체 리턴
-				return;
-			}
-			this.render_map = !this.render_map;
-		},
-		render_stations_into_map(id_list){
-			if(this.map == null) return;
-			for(i=0; i<this.infowindows.length; i++) this.infowindows[i].close();
-			for(i=0; i<this.markers.length; i++) this.markers[i].setMap(null);
-			this.infowindows = [];
-			this.markers = [];
-			const imageSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png"; 
-			for(i=0; i<id_list.length; i++){
-				var station = this.bike_station_dict[id_list[i]];
-				var latlng = new kakao.maps.LatLng( parseFloat(station["stationLatitude"]), parseFloat(station["stationLongitude"]))
-				var imageSize = new kakao.maps.Size(24, 35); 
-				var markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize); 
-
-				// 마커를 생성합니다
-				var marker = new kakao.maps.Marker({
-					map: this.map, // 마커를 표시할 지도
-					position: latlng, // 마커를 표시할 위치
-					title : station["stationName"], // 마커의 타이틀, 마커에 마우스를 올리면 타이틀이 표시됩니다
-					image : markerImage // 마커 이미지 
-				});
-				var infowindow = new kakao.maps.InfoWindow({
-					position: latlng,
-					content: `<div style="font-size:small;padding:0.1em;"><h4><a href="https://map.kakao.com/link/map/${station["stationName"]},${latlng.getLat()},${latlng.getLng()}" style="" target="_blank">${station["stationName"]}</a></h4></div>`,
-				});
-
-				infowindow.open(this.map, marker);
-
-				this.infowindows.push(infowindow);
-				this.markers.push(marker);
-			}
-		},
-		assign_and_sort_bike_station_list(is_ascending){
-			this.bike_station_list = [];
-			for(key in this.bike_station_dict){
-				this.bike_station_list.push([
-					key,
-					this.bike_station_dict[key]["stationName"],
-					this.bike_station_dict[key]["logs"].length
-				]);
-			}
-			if(is_ascending) this.bike_station_list.sort(function(a,b){ return a[2] - b[2]; });
-			else this.bike_station_list.sort(function(a,b){ return b[2] - a[2]; });
-		},
-		get_id_list_from_bike_station_list(left, right){
-			const len = this.bike_station_list.length
-			if(left < 0 || left > len-1 || right < 0 || right > len-1) return [];
-			var items = [];
-			for(i=left; i<=right; i++) items.push(this.bike_station_list[i][0]);
-			return items;
-		},
-		async _fetch(path) {
-			console.log(`send to https://jeto.ga/api/softapp${path}`);
-			const res = await fetch(`https://jeto.ga/api/softapp${path}`);
-			const jres = await res.json();
-			return jres;
-		},
-		async check_and_update_bike_stations() {
-			this.status_message = '따릉이 거치대 정보 업데이트 중...';
-			const station_info_str = localStorage.getItem('bike_station_info');
-			if(station_info_str == null) return await this.update_bike_stations();
-			const station_info = JSON.parse(station_info_str);
-			const station_count = (await this._fetch('/bike_station_counts'))[0]["count(*)"];
-			if(station_info.length != station_count) return await this.update_bike_stations();
-			this.set_bike_station_dict(station_info);
-		},
-		async update_bike_stations() {
-			this.status_message = '따릉이 거치대 정보 업데이트 중...';
-			const jres = await this._fetch('/bike_station_info');
-			localStorage.setItem('bike_station_info', JSON.stringify(jres));
-			this.set_bike_station_dict(jres);
-		},
-		set_bike_station_dict(station_info){
-			for(i = 0; i<station_info.length; i++){
-				_id = station_info[i]["stationId"];
-				if( _id in this.bike_station_dict) continue;
-				this.bike_station_dict[_id] = {};
-				this.bike_station_dict[_id]["stationName"] = station_info[i]["stationName"];
-				this.bike_station_dict[_id]["stationLatitude"] = station_info[i]["stationLatitude"];
-				this.bike_station_dict[_id]["stationLongitude"] = station_info[i]["stationLongitude"];
-				this.bike_station_dict[_id]["logs"] = [];
-			}
-			this.bike_station_count = Object.keys(this.bike_station_dict).length;
-			this.status_message = '';
-		},
-		async get_bike_logs_in_dividing_way(from, to){
-			const step = 10000;
-			var data = [];
-			for(i=from; i<=to; i+=step){
-				this.set_status_process(from, to, i);
-				if( i+step-1<to ) data.push(...(await this._fetch(`/bikes/${i}/${i+step-1}`)));
-				else data.push(...(await this._fetch(`/bikes/${i}/${to}`)));
-			}
-			this.clear_status_process();
-			return data;
-		},
-		select(id_lists, timegap = 60){
-			if(id_lists.length == 0) return;
-
-			var min = 1234567891011;
-			var max = 0;
-			for(i=0; i<id_lists.length; i++){
-				id = id_lists[i];
-				if( this.bike_station_dict[id]["logs"].length == 0 ) continue;
-				min = Math.min(min, this.bike_station_dict[id]["logs"][0][0]);
-				var last_index = this.bike_station_dict[id]["logs"].length - 1;
-				max = Math.max(max, this.bike_station_dict[id]["logs"][last_index][0]);
-			}
-			max = max + (timegap - (max % timegap));
-			min = min - (min % timegap);
-			const counts = parseInt((max-min)/timegap) + 1;
-
-			var labels = [];
-			for(i=0; i<counts; i++) labels.push(timestamp_to_str(min + i * timegap));
-
-			var datasets = [];
-			var item_count = 0;
-			for(i=0; i<id_lists.length; i++){
-				id = id_lists[i];
-				var tmp = {};
-				tmp["borderColor"] = this.colorlist[item_count++];
-				tmp["fill"] = false;
-				tmp["label"] = this.bike_station_dict[id]["stationName"];
-				tmp["data"] = [];
-
-				const list = this.bike_station_dict[id]["logs"];
-				if( list.length > 0 ){
-					var start = 0;
-					var end = list.length-1;
-					var now = min;
-
-
-					while(list[start++][0] <= min);
-					start--;
-					while(list[end--][0] >= max);
-					end++;
-
-					var index = start;
-					var is_inserted = false;
-					while( index <= end || now <= max){
-						if( (index <= end) && (now <= list[index][0]) && (list[index][0] < now+timegap)){
-							if( !is_inserted ){
-								tmp["data"].push(list[index][2]);
-								is_inserted = true;
-							}
-							index++;
-						} else{
-							if( !is_inserted ) tmp["data"].push(null);
-							now += timegap;
-							is_inserted = false;
-						}
-					}
-				}
-				datasets.push(tmp);
-			}
-			chart.data.labels = labels;
-			chart.data.datasets = datasets;
-			chart.update();
-		},
-
-		async update(from = -1, to = -1){
-			await this.update_bike_logs(from, to);
-			this.assign_and_sort_bike_station_list(false);
-			this.status_message = '결과 수집 중...';
-			this.select(this.get_id_list_from_bike_station_list(this.select_index_left, this.select_index_right), this.timegap);
-			this.render_stations_into_map(this.get_id_list_from_bike_station_list(this.select_index_left, this.select_index_right));
-			chart.update();
-			this.status_message = '';
-		},
-
-		async update_bike_logs(from, to){
-			this.status_message = '따릉이 대여 정보 업데이트 중...';
-
-			//localStorage의 최대 용량은 5MB이므로 모든 데이터는 데이터베이스에서 조금씩 꺼내는 방식으로 해결...
-			//일일 데이터의 건수와 용량 : 약 200,000개, 1개의 데이터는 약 100bytes, 총 20MB
-			//가능하면 로컬에 저장하도록 나중에 수정해야할 듯
-
-			if( !(Number.isInteger(this.bike_first_log_timestamp) && Number.isInteger(this.bike_last_log_timestamp)) ){
-				from = this.bike_first_log_timestamp = (await this._fetch(`/bike/${from}`))[0]["timestamp"];
-				to = this.bike_last_log_timestamp = (await this._fetch(`/bike/-1`))[0]["timestamp"];
-				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(from, to));
-				this.status_message = '';
-				return;
-			}
-
-			from = (await this._fetch(`/bike/${from}`))[0]["timestamp"];
-			to = (await this._fetch(`/bike/${to}`))[0]["timestamp"]
-
-			if( to > this.bike_last_log_timestamp ){
-				await this.append_back_bikes(await this.get_bike_logs_in_dividing_way(this.bike_last_log_timestamp+1, to));
-				this.bike_last_log_timestamp = to;
-			}
-			if( from < this.bike_first_log_timestamp ){
-				await this.append_front_bikes(await this.get_bike_logs_in_dividing_way(from, this.bike_first_log_timestamp-1));
-				this.bike_first_log_timestamp = from;
-			}
-			this.status_message = '';
-		},
-
-		async append_front_bikes(data){
-			var tmp_station_dict = {}
-			for(i=0; i<data.length; i++){
-				_id = data[i]["stationId"];
-				if( !(_id in tmp_station_dict) ) tmp_station_dict[_id] = [];
-				if( !(_id in this.bike_station_dict) ) await this.update_bike_stations();
-				tmp_station_dict[_id].push([data[i]["timestamp"], data[i]["total"], data[i]["parking"], data[i]["shared"]]);
-			}
-			for(key in tmp_station_dict)
-				this.bike_station_dict[key]["logs"].unshift(...tmp_station_dict[key]);
-		},
-
-		async append_back_bikes(data){
-			for(i=0; i<data.length; i++){
-				_id = data[i]["stationId"];
-				if( !(_id in this.bike_station_dict) ) await this.update_bike_stations();
-				this.bike_station_dict[_id]["logs"].push([data[i]["timestamp"], data[i]["total"], data[i]["parking"], data[i]["shared"]]);
-			}
-		},
-
-		set_status_process(from, to, now){
-			this.status_process1 = `${timestamp_to_str(from)} ~ ${timestamp_to_str(to)}`;
-			this.status_process2 = `${timestamp_to_str(now)} ${Math.round(((now-from)/(1+to-from))*100)}%`;
-		},
-		clear_status_process(){
-			this.status_process1 = '';
-			this.status_process2 = '';
-		},
-	},
-});
-function timestamp_to_str(timestamp){
-	if(timestamp == null) return '';
-	var d = new Date(timestamp * 1000);
-	var yyyy = d.getFullYear().toString();
-	var mo = lpad((d.getMonth()+1).toString(), 2, '0');
-	var dd = lpad(d.getDate().toString(), 2, '0');
-	var hh = lpad(d.getHours().toString(), 2, '0');
-	var mm = lpad(d.getMinutes().toString(), 2, '0');
-	var ss = lpad(d.getSeconds().toString(), 2, '0');
-	return `${yyyy}-${mo}-${dd} ${hh}:${mm}:${ss}`;
-}
-
-function lpad(str, padLen, padStr) {
-	if (padStr.length > padLen) {
-		console.log("오류 : 채우고자 하는 문자열이 요청 길이보다 큽니다");
-		return str;
-	}
-	str += ""; // 문자로
-	padStr += ""; // 문자로
-	while (str.length < padLen)
-		str = padStr + str;
-	str = str.length >= padLen ? str.substring(0, padLen) : str;
-	return str;
-}
-
-function rpad(str, padLen, padStr) {
-	if (padStr.length > padLen) {
-		console.log("오류 : 채우고자 하는 문자열이 요청 길이보다 큽니다");
-		return str + "";
-	}
-	str += ""; // 문자로
-	padStr += ""; // 문자로
-	while (str.length < padLen)
-		str += padStr;
-	str = str.length >= padLen ? str.substring(0, padLen) : str;
-	return str;
-}
-
-var chart = new Chart(document.getElementById("line-chart"), {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: []
-  },
-  options: {
-    title: {
-      display: true,
-      text: '실시간 따릉이 이용 데이터'
-    },
-	spanGaps: true,
-	maintainAspectRatio: false
-  }
-});
-
-</script>
 </html>

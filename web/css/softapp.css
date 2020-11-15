@@ -75,7 +75,18 @@ a, a:link, a:visited{
 	background-color: #7ebdb4;
 }
 #canvas{
+	/*
 	height: 40em;
+	*/
 }
 .none{
+}
+
+.timerangeselector, .timebox {
+	width: 25em;
+	padding: .5em;
+	justify-content: space-around;
+	align-items: center;
+	flex-direction: row;
+	display: flex;
 }
