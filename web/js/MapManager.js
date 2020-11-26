@@ -18,15 +18,15 @@ class MapManager{
 		MapManager.markers = [];
 		MapManager.circles = [];
 	}
-	static add_circle(latitude, longitude, from_color = '#000000', to_color = '#75B8FA', from_size = 10, mid_size = 100, to_size = 200, weight = 1.0){
-		console.log(latitude, longitude, from_color, to_color, from_size, mid_size, to_size, weight);
-		const r = rpad(parseInt( parseInt(`0x${from_color[1]}${from_color[2]}`) * (1-weight) + parseInt(`0x${to_color[1]}${to_color[2]}`) * weight).toString(16), 2, '0');
-		const g = rpad(parseInt( parseInt(`0x${from_color[3]}${from_color[4]}`) * (1-weight) + parseInt(`0x${to_color[3]}${to_color[4]}`) * weight).toString(16), 2, '0');
-		const b = rpad(parseInt( parseInt(`0x${from_color[5]}${from_color[6]}`) * (1-weight) + parseInt(`0x${to_color[5]}${to_color[6]}`) * weight).toString(16), 2, '0');
+	static add_circle(latitude, longitude, from_color = '#000000', to_color = '#75B8FA', from_size = 10, mid_size = 100, to_size = 200, color_weight = 1.0, size_weight = 1.0){
+		console.log(latitude, longitude, from_color, to_color, from_size, mid_size, to_size, color_weight, size_weight);
+		const r = rpad(parseInt( parseInt(`0x${from_color[1]}${from_color[2]}`) * (1-color_weight) + parseInt(`0x${to_color[1]}${to_color[2]}`) * color_weight).toString(16), 2, '0');
+		const g = rpad(parseInt( parseInt(`0x${from_color[3]}${from_color[4]}`) * (1-color_weight) + parseInt(`0x${to_color[3]}${to_color[4]}`) * color_weight).toString(16), 2, '0');
+		const b = rpad(parseInt( parseInt(`0x${from_color[5]}${from_color[6]}`) * (1-color_weight) + parseInt(`0x${to_color[5]}${to_color[6]}`) * color_weight).toString(16), 2, '0');
 		const calculated_color = `#${r}${g}${b}`;
 		let calculated_size = 100;
-		if(weight < 0.5) calculated_size = mid_size * (weight * 2) + from_size * (1 - weight * 2);
-		else calculated_size = to_size * (weight * 2 - 1) + mid_size * (1 - (weight * 2 - 1))
+		if(size_weight < 0.5) calculated_size = mid_size * (size_weight * 2) + from_size * (1 - size_weight * 2);
+		else calculated_size = to_size * (size_weight * 2 - 1) + mid_size * (1 - (size_weight * 2 - 1))
 		
 		let circle = new kakao.maps.Circle({
 			'center': new kakao.maps.LatLng( latitude, longitude ),

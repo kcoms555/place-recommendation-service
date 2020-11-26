@@ -131,26 +131,39 @@ let v = new Vue({
 			const min = rating[0][this.sortkey];
 			const max = rating[rating.length - 1][this.sortkey];
 			let from_size = 10;
-			let to_size = 200;
+			let to_size = 400;
 			let mid_size = (to_size - from_size)/2
+			/*
 			if(min < 0){
 				from_size = 200;
 				mid_size = 10;
 				to_size = 200;
 			}
+			*/
+			let min_size = 99999;
+			let max_size = 0;
+			for(let i=0; i<rating.length; i++){
+				let retren_sum_all = rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'];
+				if( min_size > retren_sum_all ) min_size = retren_sum_all;
+				if( max_size < retren_sum_all ) max_size = retren_sum_all;
+			}
 			for(let i=0; i<rating.length; i++){
 				//weight는 0 과 1 사이의 값을 가진다
-				let weight = 0;
+				let color_weight = 0;
+				let size_weight = 0;
 				if( min < 0){
 					let larger = Math.abs(max);
 					if(Math.abs(max) < Math.abs(min)) larger = Math.abs(min);
-					weight = rating[i][this.sortkey] / larger;
+					color_weight = (rating[i][this.sortkey] / larger) * .5 + .5;
 				}
 				else{
-					weight = rating[i][this.sortkey] / max;
+					color_weight = rating[i][this.sortkey] / max;
 				}
-				if( (max - min) != 0 ) weight = (rating[i][this.sortkey] - min)/(max - min)
-				mm.add_circle(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), '#0000FF', '#FF0000', from_size, mid_size, to_size, weight)
+
+				//size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)**.5/(max_size - min_size)**.5;
+				size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)/(max_size - min_size);
+				
+				mm.add_circle(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), '#0000FF', '#FF0000', from_size, mid_size, to_size, color_weight, size_weight)
 				//mm.add_infowindow(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), rating[i]["name"], rating[i]["id"])
 			}
 		},
