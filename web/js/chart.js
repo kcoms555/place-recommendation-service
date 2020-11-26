@@ -21,6 +21,24 @@ class CustomChart{
 		return this.chart;
 	}
 }
+Chart.pluginService.register({
+    afterDraw: function(chart) {
+		console.log('hi');
+        if (typeof chart.config.options.lineAt != 'undefined') {
+            var lineAt = chart.config.options.lineAt;
+            var ctxPlugin = chart.chart.ctx;
+            var xAxe = chart.scales[chart.config.options.scales.xAxes[0].id];
+            var yAxe = chart.scales[chart.config.options.scales.yAxes[0].id];
+			console.log(chart)
+            ctxPlugin.strokeStyle = "red";
+            ctxPlugin.beginPath();
+            lineAt = yAxe.getPixelForValue(lineAt);
+            ctxPlugin.moveTo(xAxe.left, lineAt);
+            ctxPlugin.lineTo(xAxe.right, lineAt);
+            ctxPlugin.stroke();
+        }
+    }
+});
 */
 let chart = new Chart(document.getElementById("line-chart"), {
 	type: 'line',

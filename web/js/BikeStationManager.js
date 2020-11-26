@@ -54,27 +54,27 @@ class BikeStationManager {
 		return await res.json();
 	}
 	static get_high_transaction_ids(stations, percentage){
-		lists = []
+		let lists = []
 		for(const key in stations){
 			const sum = BikeStationManager.getRentalCount(stations[key]) + BikeStationManager.getReturnCount(stations[key]);
 			lists.push([key, sum]);
 		}
 		lists.sort(function(a,b){return b[1] - a[1];});
-		ids = [];
+		let ids = [];
 		for(let i=0; i<Object.keys(stations).length*(percentage/100); i++) ids.push(lists[i][0]);
 		return ids;
-	},
+	}
 	static get_low_transaction_ids(stations, percentage){
-		lists = []
+		let lists = []
 		for(const key in stations){
 			const sum = BikeStationManager.getRentalCount(stations[key]) + BikeStationManager.getReturnCount(stations[key]);
 			lists.push([key, sum]);
 		}
 		lists.sort(function(a,b){return a[1] - b[1];});
-		ids = [];
+		let ids = [];
 		for(let i=0; i<Object.keys(stations).length*(percentage/100); i++) ids.push(lists[i][0]);
 		return ids;
-	},
+	}
 	static getReturnCount(station){
 		let returncount = 0;
 		for(let i=0; i<station['logs'].length -1; i++){

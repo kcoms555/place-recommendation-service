@@ -8,7 +8,48 @@ class MapManager{
 			};
 			MapManager.map = new kakao.maps.Map(container, options); //지도 생성 및 객체 리턴
 		}
-		//this.render_map = !this.render_map;
+	}
+	static clear_map(){
+		if(MapManager.map == null) return;
+		for(var i=0; i<MapManager.infowindows.length; i++) MapManager.infowindows[i].close();
+		for(var i=0; i<MapManager.markers.length; i++) MapManager.markers[i].setMap(null);
+		for(var i=0; i<MapManager.circles.length; i++) MapManager.circles[i].setMap(null);
+		MapManager.infowindows = [];
+		MapManager.markers = [];
+		MapManager.circles = [];
+	}
+	static add_circle(latitude, longitude, from_color = '#000000', to_color = '#75B8FA', from_size = 10, mid_size = 100, to_size = 200, weight = 1.0){
+		console.log(latitude, longitude, from_color, to_color, from_size, mid_size, to_size, weight);
+		const r = rpad(parseInt( parseInt(`0x${from_color[1]}${from_color[2]}`) * (1-weight) + parseInt(`0x${to_color[1]}${to_color[2]}`) * weight).toString(16), 2, '0');
+		const g = rpad(parseInt( parseInt(`0x${from_color[3]}${from_color[4]}`) * (1-weight) + parseInt(`0x${to_color[3]}${to_color[4]}`) * weight).toString(16), 2, '0');
+		const b = rpad(parseInt( parseInt(`0x${from_color[5]}${from_color[6]}`) * (1-weight) + parseInt(`0x${to_color[5]}${to_color[6]}`) * weight).toString(16), 2, '0');
+		const calculated_color = `#${r}${g}${b}`;
+		let calculated_size = 100;
+		if(weight < 0.5) calculated_size = mid_size * (weight * 2) + from_size * (1 - weight * 2);
+		else calculated_size = to_size * (weight * 2 - 1) + mid_size * (1 - (weight * 2 - 1))
+		
+		let circle = new kakao.maps.Circle({
+			'center': new kakao.maps.LatLng( latitude, longitude ),
+			'radius': calculated_size,
+			'strokeWeight': 1,
+			'strokeColor': calculated_color,
+			'strokeOpacity': 1.0,
+			'strokeStyle': 'line',
+			'fillColor': calculated_color,
+			'fillOpacity': 0.9,
+		});
+		circle.setMap(MapManager.map);
+		MapManager.circles.push(circle);
+	}
+	static add_infowindow(latitude, longitude, name, id=''){
+		console.log(latitude, longitude, name, id);
+		let infowindow = new kakao.maps.InfoWindow({
+			map: MapManager.map,
+			position: new kakao.maps.LatLng(latitude, longitude),
+			content: `<div style="font-size:small;padding:0.1em;"><h4><a href="https://map.kakao.com/link/map/${name},${latitude},${longitude}" style="" target="_blank">${name}</a></h4></div>`,
+			removable: true,
+		});
+		MapManager.infowindows.push(infowindow);
 	}
 	static render_stations_into_map(id_list, stations){
 		if(MapManager.map == null) MapManager.render_map();
@@ -45,3 +86,4 @@ class MapManager{
 MapManager.map = null;
 MapManager.infowindows = [];
 MapManager.markers = [];
+MapManager.circles = [];
