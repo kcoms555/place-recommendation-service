@@ -160,10 +160,10 @@ let v = new Vue({
 					color_weight = rating[i][this.sortkey] / max;
 				}
 
-				//size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)**.5/(max_size - min_size)**.5;
-				size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)/(max_size - min_size);
+				size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)**.5/(max_size - min_size)**.5;
+				//size_weight = (rating[i]['retren_sum_now'] + rating[i]['retren_sum_before'] - min_size)/(max_size - min_size);
 				
-				mm.add_circle(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), '#0000FF', '#FF0000', from_size, mid_size, to_size, color_weight, size_weight)
+				mm.add_circle(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), '#0000FF', '#000000', '#FF0000', from_size, mid_size, to_size, color_weight, size_weight)
 				//mm.add_infowindow(parseFloat(rating[i]["latitude"]), parseFloat(rating[i]["longitude"]), rating[i]["name"], rating[i]["id"])
 			}
 		},
